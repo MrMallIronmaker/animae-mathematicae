@@ -5,6 +5,7 @@ from gi.repository import Rsvg
 import subprocess
 from math import ceil
 from transition import Constant
+from os.path import isfile
 
 class Manager:
     def __init__(s, width, height, fps=30):
@@ -73,6 +74,10 @@ class Latex:
         m = md5()
         m.update(s.latex_source.encode('utf-8'))
         s.hexdigest = m.hexdigest()
+        # if it already exists, don't make it again.
+        # oh wait i need the parsed data... hmm..
+        #if isfile("./tmp/" + s.hexdigest + ".svg"):
+        #    return
         s.my_params = default_params
         s.my_params['filename'] = s.hexdigest
         s.svg_out = l2s(s.latex_source, params=s.my_params, working_directory="./tmp")
@@ -133,15 +138,26 @@ class Latex:
 class Rectangle:
     def __init__(s, cpos=(0,0), height=1, width=1, alpha=1,
                  equiaxial=None, color=(0,0,0), linewidth=0.01,
-                 fill=False):
-        s.cpos = cpos
-        s.height = height
-        s.width = width
-        s.alpha = alpha
+                 fill=False, rot=0):
+        s.cpos = s.sanitize_constant(cpos)
+        s.height = s.sanitize_constant(height)
+        s.width = s.sanitize_constant(width)
+        s.alpha = s.sanitize_constant(alpha)
         s.equiaxial = equiaxial
         s.color = color
         s.linewidth = linewidth
         s.fill = fill
+        s.rot = s.sanitize_constant(rot)
+    
+    def add_transition(s, **transition):
+        for k in transition:
+            setattr(s, k, transition[k])
+        
+    def sanitize_constant(s, val):
+        if not hasattr(val, '__call__'):
+            return Constant(val)
+        else:
+            return val
     
     def render(s, ctx, t):
         ctx.save()
@@ -155,11 +171,17 @@ class Rectangle:
             ctx.translate((clip_w-smaller)/2., (clip_h-smaller)/2.)
             ctx.scale(smaller, smaller)
             
+        # maybe rotate some too, but also try to keep cpos in the same spot.
+        ctx.translate(s.cpos(t)[0], s.cpos(t)[1])
+        ctx.rotate(s.rot(t))
+        ctx.translate(-s.cpos(t)[0], -s.cpos(t)[1])
+        
+            
         ctx.rectangle(
-            s.cpos[0] - s.width/2.,
-            s.cpos[1] - s.height/2.,
-            s.width,
-            s.height
+            s.cpos(t)[0] - s.width(t)/2.,
+            s.cpos(t)[1] - s.height(t)/2.,
+            s.width(t),
+            s.height(t)
         )
         
         r, g, b = s.color
