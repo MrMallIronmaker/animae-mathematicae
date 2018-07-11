@@ -55,6 +55,10 @@ class Manager:
         # overwrite out with -y
         subprocess.call(["ffmpeg", "-i", "./tmp/fake_%05d.png", "-y", out])
         
+    def convert_to_gif(s, out):
+        # command is "convert -loop 0 frames/ffout*.png output.gif"
+        subprocess.call(["convert", "-loop", "0", "-delay", "3", "./tmp/fake_*.png", out])
+        
 class Latex:
     def __init__(s, latex_source, cpos=(0, 0), height=1, alpha=1, color=(0,0,0)):
         s.latex_source = latex_source
